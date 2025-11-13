@@ -1,22 +1,39 @@
-name: Deploy para VM Local
+name: Pipeline Completo - Prova DevOps
 
 on:
+  workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [ main ]
+
+permissions:
+  contents: write  # 🔥 dá permissão pro GitHub Actions publicar no gh-pages
 
 jobs:
-  deploy:
-    runs-on: self-hosted # Roda na própria VM!
-
+  build:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout do código
-        uses: actions/checkout@v3
+      - name: Baixar código
+        uses: actions/checkout@v4
 
-      - name: Atualizar site
-        run: |
-          cd /var/www/html
-          sudo git fetch --all
-          sudo git reset --hard origin/main
-          sudo systemctl restart nginx
-          echo "Deploy realizado com sucesso em $(date)"
+      - name: Criar arquivo ZIP
+        run: zip -r release.zip .
+
+      - name: Publicar artefato ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-package
+          path: release.zip
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Deploy no GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./
